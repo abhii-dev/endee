@@ -24,14 +24,15 @@ async function upsertVectors(vectorsData) {
     await ensureCollection();
 
     const points = vectorsData.map((v, i) => ({
-      id: i + 1, // ✅ simple numeric ID (fixes error)
-      vector: v.values.map(Number), // ✅ ensure pure numbers
+      id: i + 1,
+      vector: v.values.map(Number),
       payload: {
         mongo_id: v.metadata.mongo_id,
         filename: v.metadata.filename,
         codeLanguage: v.metadata.codeLanguage,
         snippetText: v.metadata.snippetText,
         chunk_index: v.metadata.chunk_index,
+        project: v.metadata.project // ✅ ADDED
       },
     }));
 
@@ -48,10 +49,21 @@ async function upsertVectors(vectorsData) {
   }
 }
 
-async function queryVectors(queryVector, topK = 5) {
+// ✅ UPDATED ONLY THIS FUNCTION
+async function queryVectors(queryVector, topK = 5, project = null) {
   const result = await client.search(COLLECTION_NAME, {
     vector: queryVector,
     limit: topK,
+    ...(project && {
+      filter: {
+        must: [
+          {
+            key: "project",
+            match: { value: project }
+          }
+        ]
+      }
+    })
   });
 
   return result;

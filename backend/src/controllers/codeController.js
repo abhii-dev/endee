@@ -16,7 +16,6 @@ const getEmbeddingsInBatches = async (chunks, batchSize = 2) => {
 
     allEmbeddings.push(...batchEmbeddings);
 
-    // 🔥 small delay to avoid rate limit
     await new Promise(res => setTimeout(res, 500));
   }
 
@@ -24,7 +23,7 @@ const getEmbeddingsInBatches = async (chunks, batchSize = 2) => {
 };
 
 const uploadCode = async (req, res) => {
-  const { codeText, fileName, codeLanguage: specifiedLanguage } = req.body;
+  const { codeText, fileName, codeLanguage: specifiedLanguage, project } = req.body; // ✅ ADDED
 
   let fileBuffer = req.file
     ? req.file.buffer.toString('utf8')
@@ -41,7 +40,6 @@ const uploadCode = async (req, res) => {
   }
 
   try {
-    // ✅ 1. Chunk code
     let chunks = chunkCode(fileBuffer);
 
     if (chunks.length > 10) {
@@ -54,7 +52,6 @@ const uploadCode = async (req, res) => {
 
     console.log("🔥 Total chunks:", chunks.length);
 
-    // ✅ 2. Generate embeddings
     const embeddings = await getEmbeddingsInBatches(chunks);
 
     console.log("🔥 Embedding length:", embeddings[0].length);
@@ -65,35 +62,34 @@ const uploadCode = async (req, res) => {
     for (let i = 0; i < chunks.length; i++) {
       const uniqueVectorId = `${originalName}_chunk_${Date.now()}_${i}`;
 
-      // ✅ Save to MongoDB
       const newSnippet = new CodeSnippet({
         filename: req.file ? originalName : undefined,
         originalName: originalName,
         codeLanguage: language,
         snippetText: chunks[i],
-        endeeVectorId: uniqueVectorId, // keep same field (no issue)
+        endeeVectorId: uniqueVectorId,
+        project: project || "default", // ✅ ADDED
       });
 
       await newSnippet.save();
       savedSnippets.push(newSnippet);
 
-      // ✅ QDRANT FORMAT (IMPORTANT CHANGE)
       vectorsData.push({
         id: uniqueVectorId,
-        values: embeddings[i], // no need to .toFixed()
+        values: embeddings[i],
         metadata: {
           mongo_id: newSnippet._id.toString(),
           filename: originalName,
           codeLanguage: language,
           snippetText: chunks[i],
           chunk_index: i,
+          project: project || "default" // ✅ ADDED
         }
       });
     }
 
     console.log("🔥 Sending to Qdrant:", vectorsData.length);
 
-    // ✅ 3. Store in Qdrant
     await upsertVectors(vectorsData);
 
     res.status(200).json({
