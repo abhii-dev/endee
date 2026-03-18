@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@source "./src";
+
+/* GLOBAL SCROLLBAR (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3b3b3b;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
+}
+
+/* FIREFOX */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b3b3b transparent;
+}
